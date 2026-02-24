@@ -91,7 +91,11 @@ fun AppNavGraph(
 
         // ── Home (Bottom Nav Host) ─────────────────────────────────────────────
         composable(route = Route.Home.path) {
-             HomeScreen()
+             HomeScreen(
+                 onSetupComplete = {
+
+                 }
+             )
         }
 
         // ── Study: Subject Detail ──────────────────────────────────────────────
