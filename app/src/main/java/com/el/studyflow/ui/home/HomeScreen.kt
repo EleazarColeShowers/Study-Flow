@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,6 +32,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -56,9 +58,17 @@ private data class Question(
     val number: Int,
     val title: String,
     val subtitle: String,
-    val options: List<String>,
-    val isMultiSelect: Boolean = false
+    val options: List<String> = emptyList(),
+    val isMultiSelect: Boolean = false,
+    val type: QuestionType = QuestionType.OPTIONS
+
 )
+
+private enum class QuestionType {
+    OPTIONS,
+    TEXT
+}
+
 
 private val questions = listOf(
     Question(
@@ -91,6 +101,12 @@ private val questions = listOf(
         title = "What are you studying for?",
         subtitle = "We'll focus your content on what matters most",
         options = listOf("JAMB", "WAEC", "University exams", "Professional cert", "Personal growth")
+    ),
+    Question(
+        number = 6,
+        title = "What subject are you currently studying?",
+        subtitle = "Tell us in your own words",
+        type = QuestionType.TEXT,
     )
 )
 
@@ -188,6 +204,8 @@ fun HomeScreen(
                     }
                 },
                 onMultiToggle = viewModel::toggleLearningDiff,
+                textAnswer = state.textAnswer,
+                onTextChange = viewModel::updateTextAnswer,
                 isDark = isDark,
                 textColor = textColor,
                 subtleText = subtleText
@@ -208,7 +226,7 @@ fun HomeScreen(
                         .weight(1f)
                         .height(54.dp),
                     shape = RoundedCornerShape(16.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.5.dp, Green400),
+                    border = BorderStroke(1.5.dp, Green400),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Green400)
                 ) {
                     Text(
@@ -248,6 +266,8 @@ private fun QuestionContent(
     question: Question,
     selectedSingle: String,
     selectedMulti: Set<String>,
+    textAnswer: String,
+    onTextChange: (String) -> Unit,
     onSingleSelect: (String) -> Unit,
     onMultiToggle: (String) -> Unit,
     isDark: Boolean,
@@ -274,28 +294,43 @@ private fun QuestionContent(
 
         Spacer(Modifier.height(28.dp))
 
-        // Use a 2-column grid for all questions
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(question.options) { option ->
-                val isSelected = if (question.isMultiSelect) {
-                    option in selectedMulti
-                } else {
-                    option == selectedSingle
-                }
+        when (question.type) {
 
-                OptionCard(
-                    text = option,
-                    isSelected = isSelected,
-                    isDark = isDark,
-                    onClick = {
-                        if (question.isMultiSelect) onMultiToggle(option)
-                        else onSingleSelect(option)
+            QuestionType.OPTIONS -> {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(question.options) { option ->
+                        val isSelected = if (question.isMultiSelect) {
+                            option in selectedMulti
+                        } else {
+                            option == selectedSingle
+                        }
+
+                        OptionCard(
+                            text = option,
+                            isSelected = isSelected,
+                            isDark = isDark,
+                            onClick = {
+                                if (question.isMultiSelect) onMultiToggle(option)
+                                else onSingleSelect(option)
+                            }
+                        )
                     }
+                }
+            }
+
+            QuestionType.TEXT -> {
+                OutlinedTextField(
+                    value = textAnswer,
+                    onValueChange = onTextChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Type your answer...") },
+                    shape = RoundedCornerShape(16.dp),
+                    singleLine = false
                 )
             }
         }

@@ -13,6 +13,7 @@ import com.el.studyflow.ui.auth.OnboardingScreen
 import com.el.studyflow.ui.auth.SignUpScreen
 import com.el.studyflow.ui.auth.SplashScreen
 import com.el.studyflow.ui.home.HomeScreen
+import com.el.studyflow.ui.main.MainAppScreen
 
 @Composable
 fun AppNavGraph(
@@ -93,9 +94,15 @@ fun AppNavGraph(
         composable(route = Route.Home.path) {
              HomeScreen(
                  onSetupComplete = {
-
+                     navController.navigate(Route.Main.path) {
+                         popUpTo(0) { inclusive = true } // clear entire back stack on success
+                     }
                  }
              )
+        }
+
+        composable(route = Route.Main.path) {
+            MainAppScreen()
         }
 
         // ── Study: Subject Detail ──────────────────────────────────────────────

@@ -14,6 +14,8 @@ sealed class Route(val path: String) {
 
     // ── Main App Flow ──────────────────────────────────────────────────────────
     data object Home : Route("home")
+    data object Main : Route("main")
+
 
     sealed class Study(path: String) : Route("study/$path") {
         data object Dashboard : Study("dashboard")
