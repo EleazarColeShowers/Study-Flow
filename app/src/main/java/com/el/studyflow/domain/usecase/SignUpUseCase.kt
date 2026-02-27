@@ -1,7 +1,7 @@
 package com.el.studyflow.domain.usecase
 
 import com.el.studyflow.domain.model.User
-import com.el.studyflow.domain.AuthRepository
+import com.el.studyflow.domain.repository.AuthRepository
 import com.el.studyflow.domain.model.AuthState
 import com.google.firebase.auth.AuthResult
 import javax.inject.Inject

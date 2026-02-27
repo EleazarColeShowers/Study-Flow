@@ -3,7 +3,7 @@ package com.el.studyflow.data.repository
 import android.util.Log
 import com.el.studyflow.domain.model.AuthState
 import com.el.studyflow.domain.model.User
-import com.el.studyflow.domain.AuthRepository
+import com.el.studyflow.domain.repository.AuthRepository
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject

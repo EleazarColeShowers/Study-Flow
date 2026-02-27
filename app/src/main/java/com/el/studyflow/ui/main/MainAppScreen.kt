@@ -18,6 +18,7 @@ import com.el.studyflow.ui.timer.TimerScreen
 
 @Composable
 fun MainAppScreen(
+    onNavigateToProfile: () -> Unit,
     viewModel: MainAppViewModel = hiltViewModel()
 ) {
     val currentTab by viewModel.currentTab.collectAsStateWithLifecycle()
@@ -25,7 +26,9 @@ fun MainAppScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         // Tab content
         when (currentTab) {
-            BottomNavTab.DASHBOARD -> DashboardScreen()
+            BottomNavTab.DASHBOARD -> DashboardScreen(
+                onNavigateToProfile = onNavigateToProfile
+            )
             BottomNavTab.TECHNIQUES -> TechniquesScreen()
             BottomNavTab.CALENDAR -> CalendarScreen()
             BottomNavTab.CHECK_IN -> CheckInScreen(

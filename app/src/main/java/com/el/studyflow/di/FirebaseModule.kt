@@ -1,7 +1,7 @@
 package com.el.studyflow.di
 
 import com.el.studyflow.data.repository.AuthRepositoryImpl
-import com.el.studyflow.domain.AuthRepository
+import com.el.studyflow.domain.repository.AuthRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.Binds

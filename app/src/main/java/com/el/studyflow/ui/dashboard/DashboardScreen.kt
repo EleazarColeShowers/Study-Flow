@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -46,7 +47,8 @@ private val Green400 = Color(0xFF40916C)
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
-    onAddNewTrack: () -> Unit = {}
+    onAddNewTrack: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {}
 ) {
     val isDark = isSystemInDarkTheme()
     val bgColor = if (isDark) Color(0xFF0A0A0A) else Color(0xFFF4FBF7)
@@ -84,9 +86,9 @@ fun DashboardScreen(
                         color = Green400
                     )
                     Row {
-                        IconButton(onClick = {}) {
+                        IconButton(onClick = onNavigateToProfile) {
                             Icon(
-                                imageVector = Icons.Default.DateRange,
+                                imageVector = Icons.Default.Person,
                                 contentDescription = "Notifications",
                                 tint = textColor,
                                 modifier = Modifier.size(20.dp)

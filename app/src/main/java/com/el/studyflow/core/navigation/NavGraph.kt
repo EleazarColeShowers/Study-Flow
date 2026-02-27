@@ -14,6 +14,7 @@ import com.el.studyflow.ui.auth.SignUpScreen
 import com.el.studyflow.ui.auth.SplashScreen
 import com.el.studyflow.ui.home.HomeScreen
 import com.el.studyflow.ui.main.MainAppScreen
+import com.el.studyflow.ui.profile.ProfileScreen
 
 @Composable
 fun AppNavGraph(
@@ -102,7 +103,25 @@ fun AppNavGraph(
         }
 
         composable(route = Route.Main.path) {
-            MainAppScreen()
+            MainAppScreen(
+                onNavigateToProfile = {
+                    navController.navigate(Route.Profile.Main.path)
+                }
+            )
+        }
+
+        // ── Profile ────────────────────────────────────────────────────────────
+        composable(route = Route.Profile.Main.path) {
+            ProfileScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                onLoggedOut = {
+                    navController.navigate(Route.Auth.Login.path) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
         }
 
         // ── Study: Subject Detail ──────────────────────────────────────────────
