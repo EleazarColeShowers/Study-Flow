@@ -8,68 +8,52 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 
-
-
-data class SetupState(
+data class OnboardingState(
     val currentPage: Int = 0,
-    // Q1 - multi-select
-    val selectedLearningDiffs: Set<String> = emptySet(),
-    // Q2-Q5 - single select
-    val selectedAttentionSpan: String = "",
-    val selectedStudyTime: String = "",
-    val selectedDailyDedication: String = "",
-    val selectedStudyGoal: String = "",
-    val isComplete: Boolean = false,
-    val textAnswer: String = ""
-
-
-) {
-    val canGoNext: Boolean get() = when (currentPage) {
-        0 -> selectedLearningDiffs.isNotEmpty()
-        1 -> selectedAttentionSpan.isNotEmpty()
-        2 -> selectedStudyTime.isNotEmpty()
-        3 -> selectedDailyDedication.isNotEmpty()
-        4 -> selectedStudyGoal.isNotEmpty()
-        5 -> textAnswer.isNotBlank()
-        else -> false
-    }
-}
+    // All answers keyed by question id — values are either String or Set<String>
+    val answers: Map<String, Any> = emptyMap(),
+    val isComplete: Boolean = false
+)
 
 @HiltViewModel
 class HomeViewModel @Inject constructor() : ViewModel() {
 
-    private val _state = MutableStateFlow(SetupState())
-    val state: StateFlow<SetupState> = _state.asStateFlow()
+    private val _state = MutableStateFlow(OnboardingState())
+    val state: StateFlow<OnboardingState> = _state.asStateFlow()
 
-    // Q1 toggles (multi-select — except "None" clears others)
-    fun toggleLearningDiff(option: String) {
+    // ── Answer setters ─────────────────────────────────────────────────────────
+
+    fun setSingleAnswer(id: String, value: String) {
+        _state.update { it.copy(answers = it.answers + (id to value)) }
+    }
+
+    fun toggleMultiAnswer(id: String, value: String) {
         _state.update { current ->
-            val updated = if (option == "None") {
-                setOf("None")
-            } else {
-                val without = current.selectedLearningDiffs - "None"
-                if (option in without) without - option else without + option
+            val existing = (current.answers[id] as? Set<*>)
+                ?.filterIsInstance<String>()?.toMutableSet() ?: mutableSetOf()
+
+            // "None of these" / "I'd rather not say" clears all other selections
+            val exclusiveOptions = setOf("None of these", "I'd rather not say")
+            val updated: Set<String> = when {
+                value in exclusiveOptions -> setOf(value)
+                value in existing -> existing - value
+                else -> (existing - exclusiveOptions) + value
             }
-            current.copy(selectedLearningDiffs = updated)
+
+            current.copy(answers = current.answers + (id to updated))
         }
     }
 
-    // Q2-Q5 single selects
-    fun selectAttentionSpan(option: String) =
-        _state.update { it.copy(selectedAttentionSpan = option) }
+    fun setTextAnswer(id: String, value: String) {
+        _state.update { it.copy(answers = it.answers + (id to value)) }
+    }
 
-    fun selectStudyTime(option: String) =
-        _state.update { it.copy(selectedStudyTime = option) }
-
-    fun selectDailyDedication(option: String) =
-        _state.update { it.copy(selectedDailyDedication = option) }
-
-    fun selectStudyGoal(option: String) =
-        _state.update { it.copy(selectedStudyGoal = option) }
+    // ── Navigation ─────────────────────────────────────────────────────────────
 
     fun nextPage() {
         _state.update { current ->
-            if (current.currentPage < 5) {
+            val sequence = buildQuestionSequence(current)
+            if (current.currentPage < sequence.lastIndex) {
                 current.copy(currentPage = current.currentPage + 1)
             } else {
                 current.copy(isComplete = true)
@@ -85,7 +69,7 @@ class HomeViewModel @Inject constructor() : ViewModel() {
         }
     }
 
-    fun updateTextAnswer(value: String) {
-        _state.update { it.copy(textAnswer = value) }
+    fun completeSetup() {
+        _state.update { it.copy(isComplete = true) }
     }
 }

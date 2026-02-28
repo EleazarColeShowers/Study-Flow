@@ -174,14 +174,6 @@ fun AppNavGraph(
             // AIChatScreen()
         }
 
-        // ── Profile ────────────────────────────────────────────────────────────
-        composable(route = Route.Profile.Main.path) {
-            // ProfileScreen()
-        }
-
-        composable(route = Route.Profile.Settings.path) {
-            // SettingsScreen()
-        }
 
         composable(route = Route.Profile.Accessibility.path) {
             // AccessibilityScreen() - dyslexia fonts, color filters, TTS settings
