@@ -8,11 +8,11 @@ plugins {
 }
 
 android {
-    namespace = "com.el.studyflow"
+    namespace = "com.el.planora"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.el.studyflow"
+        applicationId = "com.el.planora"
         minSdk = 26
         targetSdk = 35
         versionCode = 1

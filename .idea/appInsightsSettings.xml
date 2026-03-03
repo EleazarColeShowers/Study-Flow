@@ -22,8 +22,8 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="com.el.studyflow" />
-                  <option name="mobileSdkAppId" value="1:337669022533:android:c82ccc71ae451fe307d42c" />
+                  <option name="appId" value="com.el.planora" />
+                  <option name="mobileSdkAppId" value="1:337669022533:android:6d9356d4b2ea6d0e07d42c" />
                   <option name="projectId" value="study-flow-44d75" />
                   <option name="projectNumber" value="337669022533" />
                 </ConnectionSetting>
