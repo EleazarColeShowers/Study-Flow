@@ -53,6 +53,8 @@ dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation(libs.firebase.firestore)
+
 
     // Core
     implementation(libs.androidx.core.ktx)
@@ -69,6 +71,8 @@ dependencies {
 
     // Hilt
     implementation(libs.hilt.android)
+    implementation(libs.androidx.compose.ui.text)
+    implementation(libs.androidx.material3)
 //    implementation(libs.androidx.compose.foundation)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
@@ -87,4 +91,16 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // Networking
+    implementation(libs.retrofit.core)
+    implementation(libs.retrofit.gson)
+    implementation(libs.okhttp.core)
+    implementation(libs.okhttp.logging)
+    implementation(libs.gson)
+
+    // Room
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
 }

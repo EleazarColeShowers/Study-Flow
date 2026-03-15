@@ -38,7 +38,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 @Composable
 fun TimerScreen(
     viewModel: TimerViewModel = hiltViewModel(),
-    onDismiss: () -> Unit = {}
+    onDismiss: () -> Unit = {},
 ) {
     val isDark = isSystemInDarkTheme()
     val bgColor = if (isDark) Color(0xFF0A0A0A) else Color(0xFFF4FBF7)
