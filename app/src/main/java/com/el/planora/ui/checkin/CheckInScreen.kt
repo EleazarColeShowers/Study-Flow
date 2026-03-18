@@ -150,6 +150,8 @@ fun CheckInScreen(
                         text = when {
                             state.isLoadingProfile -> "Loading..."
                             state.mode == ChatMode.CHECKIN &&
+                                    state.checkInStage == CheckInStage.MATERIAL_PROMPT -> "Paste your notes, or type 'skip'..."
+                            state.mode == ChatMode.CHECKIN &&
                                     state.checkInStage == CheckInStage.PINGING -> "Connecting..."
                             state.mode == ChatMode.CHECKIN -> "Check-in mode"
                             state.subjectName.isNotEmpty() -> state.subjectName

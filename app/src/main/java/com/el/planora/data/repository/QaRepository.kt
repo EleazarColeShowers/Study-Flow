@@ -3,6 +3,7 @@ package com.el.planora.data.repository
 import com.el.planora.data.remote.PlonoraApiService
 import com.el.planora.data.remote.model.QaResponse
 import com.google.firebase.auth.FirebaseAuth
+import com.google.gson.JsonObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -13,12 +14,12 @@ class QaRepository @Inject constructor(
     private val auth: FirebaseAuth
 ) {
 
-    suspend fun askQuestion(question: String): ApiResult<QaResponse> {
+    suspend fun askQuestion(question: String, context: String? = null): ApiResult<QaResponse> {
         return try {
             val userId = auth.currentUser?.uid
                 ?: return ApiResult.Error("Not logged in")
 
-            // Fetch real profile for subject + category
+            // Fetch real profile for subject + category + conditions
             val profile = when (val result = userProfileRepository.getCurrentUserProfile()) {
                 is ApiResult.Success -> result.data
                 is ApiResult.Error   -> return ApiResult.Error(result.message)
@@ -27,12 +28,27 @@ class QaRepository @Inject constructor(
 
             val subjectName = resolveSubjectName(profile.rawAnswers, profile.userCategory)
 
-            val response = api.askQuestion(
-                userId       = userId,
-                question     = question,
-                subjectName  = subjectName,
-                userCategory = profile.userCategory
-            )
+            // V2: /qa now accepts a JSON body instead of query parameters
+            val requestBody = JsonObject().apply {
+                addProperty("user_id", userId)
+                addProperty("question", question)
+                addProperty("subject_name", subjectName)
+                addProperty("user_category", profile.userCategory)
+
+                // Optional: pass study material as context for grounded answers
+                if (context != null) addProperty("context", context)
+
+                // Optional: user_profile makes responses condition-aware
+                // e.g. shorter answers for ADHD, simpler language for dyslexia
+                add("user_profile", JsonObject().apply {
+                    addProperty("has_adhd", profile.hasAdhd)
+                    addProperty("has_dyslexia", profile.hasDyslexia)
+                    addProperty("has_autism", profile.hasAutism)
+                    addProperty("has_anxiety", profile.hasAnxiety)
+                })
+            }
+
+            val response = api.askQuestion(requestBody)
 
             if (response.isSuccessful && response.body() != null) {
                 ApiResult.Success(response.body()!!)
@@ -44,10 +60,6 @@ class QaRepository @Inject constructor(
         }
     }
 
-    /**
-     * Picks the most relevant subject name from raw onboarding answers
-     * based on the user's category.
-     */
     private fun resolveSubjectName(
         rawAnswers: Map<String, String>,
         userCategory: String

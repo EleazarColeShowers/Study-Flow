@@ -5,10 +5,12 @@ import com.el.planora.data.remote.model.CheckInMessageResponse
 import com.el.planora.data.remote.model.CheckInStartRequest
 import com.el.planora.data.remote.model.CheckInStartResponse
 import com.el.planora.data.remote.model.PingResponse
+import com.el.planora.data.remote.model.QaRequest
 import com.el.planora.data.remote.model.QaResponse
 import com.el.planora.data.remote.model.RecommendRequest
 import com.el.planora.data.remote.model.RecommendResponse
 import com.el.planora.data.repository.CheckInStartRequestFlexible
+import com.google.gson.JsonObject
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -50,13 +52,24 @@ interface PlonoraApiService {
     ): Response<Unit>
 
     // ── Study Q&A ──────────────────────────────────────────────────────────────
-    // API uses query parameters, not a request body
     @POST("qa")
     suspend fun askQuestion(
-        @Query("user_id")      userId: String,
-        @Query("question")     question: String,
-        @Query("subject_name") subjectName: String,
-        @Query("user_category") userCategory: String,
-        @Query("context")      context: String? = null
+        @Body request: JsonObject
     ): Response<QaResponse>
+
+    @GET("subjects/{userId}")
+    suspend fun getSubjects(
+        @Path("userId") userId: String
+    ): Response<JsonObject>
+
+    @POST("users")
+    suspend fun createUser(
+        @Body profile: JsonObject
+    ): Response<JsonObject>
+
+    @POST("subjects")
+    suspend fun addSubject(
+        @Body subject: JsonObject
+    ): Response<JsonObject>
+
 }

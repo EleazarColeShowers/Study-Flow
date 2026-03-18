@@ -33,7 +33,7 @@ enum class ChatMode {
     CHECKIN    // Check-in flow — multi-turn conversation
 }
 
-enum class CheckInStage { IDLE, PINGING, CHECKIN, QUIZ, COMPLETE, ERROR }
+enum class CheckInStage { IDLE, PINGING, CHECKIN,MATERIAL_PROMPT, QUIZ, COMPLETE, ERROR }
 
 data class CheckInUiState(
     val messages: List<ChatMessage> = emptyList(),
@@ -122,10 +122,25 @@ class CheckInViewModel @Inject constructor(
     // ── Q&A mode ──────────────────────────────────────────────────────────────
     private fun handleQaMessage(question: String) {
         viewModelScope.launch {
+            // Show typing indicator while potentially waking server
+            when (val pingResult = checkInRepository.ping()) {
+                is ApiResult.Error -> {
+                    _state.update { it.copy(isBotTyping = false) }
+                    addBotMessage("⚠️ Couldn't reach the server. Check your connection.")
+                    return@launch
+                }
+                else -> Unit
+            }
+
             when (val result = qaRepository.askQuestion(question)) {
                 is ApiResult.Success -> {
                     _state.update { it.copy(isBotTyping = false) }
-                    addBotMessage(result.data.answer)
+                    val answer = result.data.answer
+                    if (!answer.isNullOrBlank()) {
+                        addBotMessage(answer)
+                    } else {
+                        addBotMessage("⚠️ No answer returned. The backend may still be warming up — try again.")
+                    }
                 }
                 is ApiResult.Error -> {
                     _state.update { it.copy(isBotTyping = false) }
@@ -146,6 +161,7 @@ class CheckInViewModel @Inject constructor(
                     val newStage = when (response.stage) {
                         "quiz"     -> CheckInStage.QUIZ
                         "complete" -> CheckInStage.COMPLETE
+                        "material_prompt"  -> CheckInStage.MATERIAL_PROMPT
                         else       -> CheckInStage.CHECKIN
                     }
                     _state.update {

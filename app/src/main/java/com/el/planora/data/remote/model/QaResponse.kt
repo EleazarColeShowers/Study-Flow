@@ -10,3 +10,11 @@ data class QaResponse(
     val answer: String,
     val subject: String
 )
+
+data class QaRequest(
+    val user_id: String,
+    val question: String,
+    val subject_name: String,
+    val user_category: String,
+    val context: String? = null
+)

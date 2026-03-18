@@ -20,7 +20,7 @@ object NetworkModule {
     private const val BASE_URL = "https://planora-1-87zb.onrender.com/"
 
     // Long timeout because Render free tier can take 60s to wake up
-    private const val TIMEOUT_SECONDS = 90L
+    private const val TIMEOUT_SECONDS = 120L
 
     @Provides
     @Singleton
