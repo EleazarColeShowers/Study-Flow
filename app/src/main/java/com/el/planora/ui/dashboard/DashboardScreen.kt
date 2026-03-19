@@ -1,10 +1,13 @@
 package com.el.planora.ui.dashboard
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,7 +58,8 @@ private val Green400 = Color(0xFF40916C)
 fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
     onAddNewTrack: () -> Unit = {},
-    onNavigateToProfile: () -> Unit = {}
+    onNavigateToProfile: () -> Unit = {},
+    onNavigateToSubject: (subjectId: String, subjectName: String, contentType: String, daysToExam: Int) -> Unit = { _, _, _, _ -> }
 ) {
     val isDark      = isSystemInDarkTheme()
     val bgColor     = if (isDark) Color(0xFF0A0A0A) else Color(0xFFF4FBF7)
@@ -285,30 +290,38 @@ fun DashboardScreen(
                         track = track,
                         cardBg = cardBg,
                         textColor = textColor,
-                        subtleText = subtleText
+                        subtleText = subtleText,
+                        onClick = {
+                            onNavigateToSubject(
+                                track.id,
+                                track.title,
+                                track.exam,          // contentType stored in exam field
+                                0                    // daysToExam — add to StudyTrack model if needed
+                            )
+                        }
                     )
                 }
+
             }
 
             item { Spacer(modifier = Modifier.height(100.dp)) }
         }
 
-        // ── Floating Add Button ────────────────────────────────────────────────
         Button(
             onClick = { showAddSheet = true },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(16.dp)
+                .padding(20.dp)
                 .size(56.dp),
             shape = RoundedCornerShape(50),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Green400,
                 contentColor = Color.White
-            )
+            ),
+            contentPadding = PaddingValues(0.dp)
         ) {
             Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(28.dp))
         }
-        //    add the sheet:
         if (showAddSheet) {
             AddSubjectSheet(
                 onDismiss = { showAddSheet = false },
@@ -318,7 +331,6 @@ fun DashboardScreen(
     }
 }
 
-// ── Stat Card ─────────────────────────────────────────────────────────────────
 
 @Composable
 private fun StatCard(
@@ -352,7 +364,8 @@ private fun StatCard(
 private fun StudyTrackCard(
     track: StudyTrack,
     cardBg: Color, textColor: Color, subtleText: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
 ) {
     Box(
         modifier = modifier
@@ -361,6 +374,10 @@ private fun StudyTrackCard(
             .clip(RoundedCornerShape(16.dp))
             .background(cardBg)
             .padding(12.dp)
+            .clickable(                     // ← ADD THIS
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple()
+            ) { onClick() }
     ) {
         Column {
             Box(

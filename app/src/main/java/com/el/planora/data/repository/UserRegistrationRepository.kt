@@ -1,6 +1,6 @@
 package com.el.planora.data.repository
 
-import com.el.planora.data.remote.PlonoraApiService
+import com.el.planora.data.remote.planoraApiService
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.gson.JsonObject
@@ -10,7 +10,7 @@ import javax.inject.Singleton
 
 @Singleton
 class UserRegistrationRepository @Inject constructor(
-    private val api: PlonoraApiService,
+    private val api: planoraApiService,
     private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth,
     private val userProfileRepository: UserProfileRepository

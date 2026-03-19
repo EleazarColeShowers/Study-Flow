@@ -3,7 +3,7 @@ package com.el.planora.data.repository
 import com.el.planora.data.local.dao.CheckInSummaryDao
 import com.el.planora.data.local.entity.CheckInSummaryEntity
 import com.el.planora.data.mapper.UserProfileMapper
-import com.el.planora.data.remote.PlonoraApiService
+import com.el.planora.data.remote.planoraApiService
 import com.el.planora.data.remote.model.CheckInMessageRequest
 import com.el.planora.data.remote.model.CheckInMessageResponse
 import com.el.planora.data.remote.model.CheckInStartResponse
@@ -27,7 +27,7 @@ data class CheckInStartRequestFlexible(
 
 @Singleton
 class CheckInRepository @Inject constructor(
-    private val api: PlonoraApiService,
+    private val api: planoraApiService,
     private val summaryDao: CheckInSummaryDao,
     private val userProfileRepository: UserProfileRepository  // ← real profile
 ) {

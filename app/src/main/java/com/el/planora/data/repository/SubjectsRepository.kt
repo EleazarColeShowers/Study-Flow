@@ -1,6 +1,6 @@
 package com.el.planora.data.repository
 
-import com.el.planora.data.remote.PlonoraApiService
+import com.el.planora.data.remote.planoraApiService
 import com.el.planora.domain.model.DashboardStats
 import com.el.planora.domain.model.StudyTrack
 import com.el.planora.domain.model.Topic
@@ -13,7 +13,7 @@ import javax.inject.Singleton
 
 @Singleton
 class SubjectsRepository @Inject constructor(
-    private val api: PlonoraApiService,
+    private val api: planoraApiService,
     private val auth: FirebaseAuth,
     private val firestore: FirebaseFirestore
 ) {
@@ -80,7 +80,7 @@ class SubjectsRepository @Inject constructor(
 private fun JsonObject.toStudyTrack(): StudyTrack? {
     return try {
         StudyTrack(
-            id                   = get("subject_id")?.asString ?: return null,
+            id                   = get("id")?.asString ?: return null,
             title                = get("subject_name")?.asString ?: "Unknown Subject",
             subject              = get("subject_name")?.asString ?: "",
             exam                 = mapContentType(get("content_type")?.asString),

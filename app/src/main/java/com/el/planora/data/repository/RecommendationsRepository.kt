@@ -1,6 +1,6 @@
 package com.el.planora.data.repository
 
-import com.el.planora.data.remote.PlonoraApiService
+import com.el.planora.data.remote.planoraApiService
 import com.el.planora.data.remote.model.RecommendRequest
 import com.el.planora.data.remote.model.RecommendResponse
 import com.el.planora.data.remote.model.RecommendSubjectProfile
@@ -11,7 +11,7 @@ import javax.inject.Singleton
 
 @Singleton
 class RecommendationsRepository @Inject constructor(
-    private val api: PlonoraApiService,
+    private val api: planoraApiService,
     private val userProfileRepository: UserProfileRepository
 ) {
 
@@ -25,6 +25,70 @@ class RecommendationsRepository @Inject constructor(
             }
 
             val request = buildRequest(profile)
+            val response = api.getRecommendations(request)
+
+            if (response.isSuccessful && response.body() != null) {
+                ApiResult.Success(response.body()!!)
+            } else {
+                ApiResult.Error(errorMessage(response.code()))
+            }
+        } catch (e: Exception) {
+            ApiResult.Error("Check your connection and try again")
+        }
+    }
+
+    suspend fun getRecommendationsForSubject(
+        subjectId: String,
+        subjectName: String,
+        contentType: String,
+        daysToExam: Int
+    ): ApiResult<RecommendResponse> {
+        return try {
+            val profile = when (val result = userProfileRepository.getCurrentUserProfile()) {
+                is ApiResult.Success -> result.data
+                is ApiResult.Error   -> return ApiResult.Error(result.message)
+                else                 -> return ApiResult.Error("Could not load profile")
+            }
+
+            // Map content type back to API value if needed
+            val apiContentType = when {
+                contentType.contains("Theory", ignoreCase = true)       -> "theory"
+                contentType.contains("Calculation", ignoreCase = true)  -> "calculation"
+                contentType.contains("Practical", ignoreCase = true)    -> "practical"
+                else                                                     -> "mixed"
+            }
+
+            val request = RecommendRequest(
+                user = RecommendUserProfile(
+                    userName      = profile.userName,
+                    userCategory  = profile.userCategory,
+                    hasAdhd       = profile.hasAdhd,
+                    hasDyslexia   = profile.hasDyslexia,
+                    hasAutism     = profile.hasAutism,
+                    hasAnxiety    = profile.hasAnxiety,
+                    attentionSpan = profile.attentionSpan,
+                    sleepHours    = profile.sleepHours,
+                    dailyStudyHrs = profile.dailyStudyHrs,
+                    learningStyle = profile.learningStyle,
+                    peakFocusTime = profile.peakFocusTime,
+                    studyEnv      = profile.studyEnv,
+                    struggle      = profile.struggle,
+                    currentLevel  = profile.currentLevel,
+                    priorAttempt  = profile.priorAttempt,
+                    successGoal   = profile.successGoal
+                ),
+                subject = RecommendSubjectProfile(
+                    subjectName = subjectName,
+                    contentType = apiContentType,
+                    memoryLoad  = "high",
+                    difficulty  = if (daysToExam < 30) 4 else 3,
+                    hasDeadline = if (daysToExam < 999) 1 else 0,
+                    daysToExam  = daysToExam
+                )
+            )
+
+            // Also pass user_id and subject_id so results are saved to Supabase
+            // The API accepts these as optional top-level fields alongside user/subject
             val response = api.getRecommendations(request)
 
             if (response.isSuccessful && response.body() != null) {

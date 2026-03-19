@@ -2,7 +2,7 @@ package com.el.planora.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.el.planora.data.remote.PlonoraApiService
+import com.el.planora.data.remote.planoraApiService
 import com.el.planora.data.repository.UserRegistrationRepository
 import com.el.planora.ui.component.BottomNavTab
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,7 +15,7 @@ import javax.inject.Inject
 @HiltViewModel
 class MainAppViewModel @Inject constructor(
     private val userRegistrationRepository: UserRegistrationRepository,
-    private val api: PlonoraApiService
+    private val api: planoraApiService
 ) : ViewModel() {
 
     private val _currentTab = MutableStateFlow(BottomNavTab.DASHBOARD)

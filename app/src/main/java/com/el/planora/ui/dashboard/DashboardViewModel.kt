@@ -55,13 +55,14 @@ class DashboardViewModel @Inject constructor(
             when (val result = subjectsRepository.getSubjects()) {
                 is ApiResult.Success -> {
                     val tracks = result.data
+                    android.util.Log.d("Dashboard", "Tracks loaded: ${tracks.size}")
                     _allTracks.value = tracks
                     _studyTracks.value = tracks
                     _stats.value = subjectsRepository.calculateStats(tracks)
                     _uiState.update { it.copy(isLoading = false) }
                 }
                 is ApiResult.Error -> {
-                    // Show empty state with error message
+                    android.util.Log.d("Dashboard", "Error: ${result.message}")
                     _uiState.update { it.copy(isLoading = false, error = result.message) }
                 }
                 else -> Unit

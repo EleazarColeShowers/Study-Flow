@@ -84,7 +84,6 @@ fun CheckInScreen(
         }
     }
 
-    // imePadding on the outermost container — pushes everything up when keyboard opens
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -150,11 +149,12 @@ fun CheckInScreen(
                         text = when {
                             state.isLoadingProfile -> "Loading..."
                             state.mode == ChatMode.CHECKIN &&
-                                    state.checkInStage == CheckInStage.MATERIAL_PROMPT -> "Paste your notes, or type 'skip'..."
-                            state.mode == ChatMode.CHECKIN &&
                                     state.checkInStage == CheckInStage.PINGING -> "Connecting..."
+                            state.mode == ChatMode.CHECKIN &&
+                                    state.checkInStage == CheckInStage.COMPLETE -> "Session complete"
                             state.mode == ChatMode.CHECKIN -> "Check-in mode"
-                            state.subjectName.isNotEmpty() -> state.subjectName
+                            state.mode == ChatMode.QA &&
+                                    state.subjectName.isNotEmpty() -> state.subjectName
                             else -> "Study Q&A"
                         },
                         style = MaterialTheme.typography.labelSmall,
@@ -163,65 +163,115 @@ fun CheckInScreen(
                 }
             }
 
-            if (state.mode == ChatMode.QA && !state.isLoadingProfile) {
-                OutlinedButton(
-                    onClick = { viewModel.startCheckIn() },
-                    modifier = Modifier.height(34.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Green400),
-                    border = androidx.compose.foundation.BorderStroke(1.5.dp, Green400),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                ) {
-                    Text(
-                        "Check In",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
+            // ── Mode toggle button ────────────────────────────────────────────
+            // Check-in mode → show "Q&A" button to switch
+            // QA mode → show "Check In" button to switch back
+            if (!state.isLoadingProfile) {
+                when (state.mode) {
+                    ChatMode.CHECKIN -> {
+                        // Only show Q&A switch if check-in is idle or complete
+                        if (state.checkInStage == CheckInStage.IDLE ||
+                            state.checkInStage == CheckInStage.COMPLETE ||
+                            state.checkInStage == CheckInStage.ERROR) {
+                            OutlinedButton(
+                                onClick = { viewModel.switchToQA() },
+                                modifier = Modifier.height(34.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Green400),
+                                border = androidx.compose.foundation.BorderStroke(1.5.dp, Green400),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                            ) {
+                                Text(
+                                    "Q&A",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        } else {
+                            // Check-in in progress → show Cancel
+                            OutlinedButton(
+                                onClick = {
+                                    viewModel.onDismiss()
+                                    viewModel.reset()
+                                },
+                                modifier = Modifier.height(34.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE53935)),
+                                border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFFE53935)),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                            ) {
+                                Text(
+                                    "Cancel",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+                    ChatMode.QA -> {
+                        // In QA mode → show Check In button to switch back
+                        OutlinedButton(
+                            onClick = { viewModel.startCheckIn() },
+                            modifier = Modifier.height(34.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Green400),
+                            border = androidx.compose.foundation.BorderStroke(1.5.dp, Green400),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                        ) {
+                            Text(
+                                "Check In",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 }
             }
+        }
 
-            if (state.mode == ChatMode.CHECKIN &&
-                state.checkInStage != CheckInStage.PINGING) {
-                OutlinedButton(
-                    onClick = {
-                        viewModel.onDismiss()
-                        viewModel.reset()
-                    },
-                    modifier = Modifier.height(34.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE53935)),
-                    border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFFE53935)),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+        // ── Mode banner ───────────────────────────────────────────────────────
+        when (state.mode) {
+            ChatMode.CHECKIN -> {
+                if (state.checkInStage != CheckInStage.IDLE &&
+                    state.checkInStage != CheckInStage.COMPLETE &&
+                    state.checkInStage != CheckInStage.ERROR) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Green400.copy(alpha = 0.1f))
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "📋 Check-in in progress — logging your session",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Green400,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+            ChatMode.QA -> {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF3B82F6).copy(alpha = 0.08f))
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        "Cancel",
-                        style = MaterialTheme.typography.labelMedium,
+                        text = "💬 Q&A mode — tap Check In to log a session",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF3B82F6),
                         fontWeight = FontWeight.SemiBold
                     )
                 }
             }
         }
 
-        // Mode banner
-        if (state.mode == ChatMode.CHECKIN) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Green400.copy(alpha = 0.1f))
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "📋 Check-in in progress — logging your session",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Green400,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-
-        // ── Message list — takes all remaining space ───────────────────────────
+        // ── Message list ──────────────────────────────────────────────────────
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -272,7 +322,7 @@ fun CheckInScreen(
             item { Spacer(Modifier.height(8.dp)) }
         }
 
-        // ── Input bar — pinned at bottom, always visible ───────────────────────
+        // ── Input bar ─────────────────────────────────────────────────────────
         HorizontalDivider(color = borderColor, thickness = 1.dp)
         Row(
             modifier = Modifier
@@ -292,9 +342,15 @@ fun CheckInScreen(
                     Text(
                         text = when {
                             state.mode == ChatMode.CHECKIN &&
-                                    state.checkInStage == CheckInStage.QUIZ -> "Type your answer..."
-                            state.mode == ChatMode.CHECKIN -> "Reply to coach..."
-                            else -> "Ask about ${state.subjectName.ifEmpty { "your subject" }}..."
+                                    state.checkInStage == CheckInStage.MATERIAL_PROMPT ->
+                                "Paste your notes, or type 'skip'..."
+                            state.mode == ChatMode.CHECKIN &&
+                                    state.checkInStage == CheckInStage.QUIZ ->
+                                "Type your answer..."
+                            state.mode == ChatMode.CHECKIN ->
+                                "Reply to coach..."
+                            else ->
+                                "Ask about ${state.subjectName.ifEmpty { "your subject" }}..."
                         },
                         color = subtleText,
                         style = MaterialTheme.typography.bodyMedium
@@ -408,8 +464,6 @@ private fun SummaryStatItem(label: String, value: String, textColor: Color, subt
     }
 }
 
-// ── Chat Bubble ───────────────────────────────────────────────────────────────
-
 @Composable
 private fun ChatBubble(
     message: ChatMessage,
@@ -467,8 +521,6 @@ private fun ChatBubble(
         }
     }
 }
-
-// ── Typing Indicator ──────────────────────────────────────────────────────────
 
 @Composable
 private fun TypingIndicator(botBubble: Color, dotColor: Color) {

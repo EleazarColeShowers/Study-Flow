@@ -15,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,25 +28,36 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.el.planora.R
-import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
     onNavigateToOnboarding: () -> Unit,
     onNavigateToHome: () -> Unit,
+    viewModel: SplashViewModel = hiltViewModel()
 ) {
-    val scale = remember { Animatable(0f) }
-    val textAlpha = remember { Animatable(0f) }
+    val scale       = remember { Animatable(0f) }
+    val textAlpha   = remember { Animatable(0f) }
+    val destination by viewModel.destination.collectAsStateWithLifecycle()
 
+    // Run the logo animation
     LaunchedEffect(Unit) {
         scale.animateTo(
             targetValue = 1f,
             animationSpec = tween(durationMillis = 600, easing = EaseOutBack)
         )
         textAlpha.animateTo(1f, animationSpec = tween(400))
-        delay(800)
-        onNavigateToOnboarding()
+    }
+
+    // React to the auth decision once it's ready
+    LaunchedEffect(destination) {
+        when (destination) {
+            SplashDestination.HOME       -> onNavigateToHome()
+            SplashDestination.ONBOARDING -> onNavigateToOnboarding()
+            SplashDestination.LOADING    -> Unit
+        }
     }
 
     Box(
@@ -65,7 +77,7 @@ fun SplashScreen(
                     .size(100.dp)
                     .scale(scale.value)
                     .clip(CircleShape)
-                    .background(colorResource(id= R.color.green)),
+                    .background(colorResource(id = R.color.green)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(

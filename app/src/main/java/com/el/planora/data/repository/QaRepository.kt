@@ -1,6 +1,6 @@
 package com.el.planora.data.repository
 
-import com.el.planora.data.remote.PlonoraApiService
+import com.el.planora.data.remote.planoraApiService
 import com.el.planora.data.remote.model.QaResponse
 import com.google.firebase.auth.FirebaseAuth
 import com.google.gson.JsonObject
@@ -9,7 +9,7 @@ import javax.inject.Singleton
 
 @Singleton
 class QaRepository @Inject constructor(
-    private val api: PlonoraApiService,
+    private val api: planoraApiService,
     private val userProfileRepository: UserProfileRepository,
     private val auth: FirebaseAuth
 ) {

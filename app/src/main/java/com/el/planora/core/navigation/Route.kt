@@ -21,10 +21,23 @@ sealed class Route(val path: String) {
         data object Dashboard : Study("dashboard")
 
         // Navigates to a specific subject by ID
-        data object SubjectDetail : Study("subject/{subjectId}") {
-            fun createRoute(subjectId: String) = "study/subject/$subjectId"
-            const val ARG_SUBJECT_ID = "subjectId"
+        object SubjectDetail : Route("study/subject/{subjectId}/{subjectName}/{contentType}/{daysToExam}") {
+            const val ARG_SUBJECT_ID    = "subjectId"
+            const val ARG_SUBJECT_NAME  = "subjectName"
+            const val ARG_CONTENT_TYPE  = "contentType"
+            const val ARG_DAYS_TO_EXAM  = "daysToExam"
+
+            fun createRoute(
+                subjectId: String,
+                subjectName: String,
+                contentType: String,
+                daysToExam: Int
+            ) = "study/subject/$subjectId/${subjectName.encode()}/${contentType.encode()}/$daysToExam"
+
+            private fun String.encode() =
+                java.net.URLEncoder.encode(this, "UTF-8")
         }
+
 
         data object FlashCards : Study("flashcards/{deckId}") {
             fun createRoute(deckId: String) = "study/flashcards/$deckId"

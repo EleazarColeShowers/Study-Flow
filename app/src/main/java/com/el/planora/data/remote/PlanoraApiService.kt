@@ -19,7 +19,7 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 
-interface PlonoraApiService {
+interface planoraApiService {
 
     @GET("ping")
     suspend fun ping(): Response<PingResponse>
@@ -71,5 +71,12 @@ interface PlonoraApiService {
     suspend fun addSubject(
         @Body subject: JsonObject
     ): Response<JsonObject>
+
+
+    @GET("flashcards/due")
+    suspend fun getDueFlashcards(
+        @Query("user_id")   userId: String,
+        @Query("subject_id") subjectId: String
+    ): Response<JsonObject>  // ← must return JsonObject, not ResponseBody
 
 }

@@ -28,17 +28,14 @@ data class ChatMessage(
     val timestamp: String = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date())
 )
 
-enum class ChatMode {
-    QA,        // Default — user asks study questions
-    CHECKIN    // Check-in flow — multi-turn conversation
-}
+enum class ChatMode { QA, CHECKIN }
 
-enum class CheckInStage { IDLE, PINGING, CHECKIN,MATERIAL_PROMPT, QUIZ, COMPLETE, ERROR }
+enum class CheckInStage { IDLE, PINGING, CHECKIN, MATERIAL_PROMPT, QUIZ, COMPLETE, ERROR }
 
 data class CheckInUiState(
     val messages: List<ChatMessage> = emptyList(),
     val inputText: String = "",
-    val mode: ChatMode = ChatMode.QA,
+    val mode: ChatMode = ChatMode.CHECKIN,
     val checkInStage: CheckInStage = CheckInStage.IDLE,
     val isBotTyping: Boolean = false,
     val summary: CheckInSummaryDto? = null,
@@ -61,34 +58,83 @@ class CheckInViewModel @Inject constructor(
     val state: StateFlow<CheckInUiState> = _state.asStateFlow()
 
     init {
-        loadProfileAndGreet()
+        // Load profile first, then auto-start check-in in sequence
+        loadProfileThenStartCheckIn()
     }
 
-    // ── Load profile on open, show greeting ───────────────────────────────────
-    private fun loadProfileAndGreet() {
+    // ── Step 1: Load profile, then immediately start check-in ─────────────────
+    // Everything runs sequentially in one coroutine — no race condition possible
+    private fun loadProfileThenStartCheckIn() {
         viewModelScope.launch {
+
+            // ── Load profile ──────────────────────────────────────────────────
+            val subjectName: String
+            val userName: String
+
             when (val result = userProfileRepository.getCurrentUserProfile()) {
                 is ApiResult.Success -> {
                     val profile = result.data
-                    val subject = resolveSubject(profile.rawAnswers, profile.userCategory)
+                    subjectName = resolveSubject(profile.rawAnswers, profile.userCategory)
+                    userName = profile.userName
                     _state.update {
-                        it.copy(
-                            subjectName = subject,
-                            isLoadingProfile = false
-                        )
+                        it.copy(subjectName = subjectName, isLoadingProfile = false)
                     }
-                    addBotMessage(
-                        "Hi ${profile.userName} 👋 I'm your Planora study coach.\n\n" +
-                                "You can ask me anything about **$subject**, or tap " +
-                                "**Check In** to log today's session."
-                    )
+                }
+                else -> {
+                    subjectName = "your subject"
+                    userName = ""
+                    _state.update { it.copy(isLoadingProfile = false, subjectName = subjectName) }
+                }
+            }
+
+            // ── Show greeting ─────────────────────────────────────────────────
+            val greeting = if (userName.isNotEmpty()) {
+                "Hi $userName 👋 I'm your Planora study coach. Starting your check-in for **$subjectName**..."
+            } else {
+                "Hi! 👋 I'm your Planora study coach. Starting your check-in..."
+            }
+            addBotMessage(greeting)
+
+            // ── Ping server ───────────────────────────────────────────────────
+            _state.update { it.copy(checkInStage = CheckInStage.PINGING) }
+            addBotMessage("Connecting to Planora... ⏳")
+
+            when (checkInRepository.ping()) {
+                is ApiResult.Success -> {
+                    // ── Start check-in session ─────────────────────────────────
+                    val userId = UUID.randomUUID().toString()
+                    _state.update { it.copy(isBotTyping = true) }
+
+                    when (val result = checkInRepository.startCheckIn(
+                        userId = userId,
+                        subjectName = subjectName.ifEmpty { "Today's Subject" }
+                    )) {
+                        is ApiResult.Success -> {
+                            // Store userId BEFORE updating stage so sendMessage() can read it
+                            _state.update {
+                                it.copy(
+                                    sessionUserId = userId,
+                                    checkInStage  = CheckInStage.CHECKIN,
+                                    isBotTyping   = false
+                                )
+                            }
+                            addBotMessage(result.data.message)
+                        }
+                        is ApiResult.Error -> {
+                            _state.update {
+                                it.copy(
+                                    checkInStage = CheckInStage.ERROR,
+                                    isBotTyping  = false
+                                )
+                            }
+                            addBotMessage("⚠️ ${result.message}\n\nYou can still use Q&A mode.")
+                        }
+                        else -> Unit
+                    }
                 }
                 is ApiResult.Error -> {
-                    _state.update { it.copy(isLoadingProfile = false, subjectName = "your subject") }
-                    addBotMessage(
-                        "Hi! 👋 I'm your Planora study coach.\n\n" +
-                                "Ask me any study question, or tap **Check In** to log today's session."
-                    )
+                    _state.update { it.copy(checkInStage = CheckInStage.ERROR) }
+                    addBotMessage("⚠️ Couldn't reach the server. Tap **Check In** to retry, or use Q&A mode.")
                 }
                 else -> Unit
             }
@@ -100,10 +146,17 @@ class CheckInViewModel @Inject constructor(
         _state.update { it.copy(inputText = text) }
     }
 
-    // ── Send message — routes to QA or Check-in based on mode ─────────────────
+    // ── Send message ──────────────────────────────────────────────────────────
     fun sendMessage() {
         val text = _state.value.inputText.trim()
         if (text.isBlank() || _state.value.isBotTyping) return
+
+        // Guard: don't send check-in messages if session not established
+        if (_state.value.mode == ChatMode.CHECKIN &&
+            _state.value.sessionUserId.isEmpty()) {
+            addBotMessage("⚠️ Session not ready yet. Please wait...")
+            return
+        }
 
         _state.update {
             it.copy(
@@ -122,7 +175,6 @@ class CheckInViewModel @Inject constructor(
     // ── Q&A mode ──────────────────────────────────────────────────────────────
     private fun handleQaMessage(question: String) {
         viewModelScope.launch {
-            // Show typing indicator while potentially waking server
             when (val pingResult = checkInRepository.ping()) {
                 is ApiResult.Error -> {
                     _state.update { it.copy(isBotTyping = false) }
@@ -151,7 +203,7 @@ class CheckInViewModel @Inject constructor(
         }
     }
 
-    // ── Check-in mode — sends to /checkin/message ─────────────────────────────
+    // ── Check-in mode ─────────────────────────────────────────────────────────
     private fun handleCheckInMessage(message: String) {
         viewModelScope.launch {
             val userId = _state.value.sessionUserId
@@ -159,35 +211,30 @@ class CheckInViewModel @Inject constructor(
                 is ApiResult.Success -> {
                     val response = result.data
                     val newStage = when (response.stage) {
-                        "quiz"     -> CheckInStage.QUIZ
-                        "complete" -> CheckInStage.COMPLETE
-                        "material_prompt"  -> CheckInStage.MATERIAL_PROMPT
-                        else       -> CheckInStage.CHECKIN
+                        "material_prompt" -> CheckInStage.MATERIAL_PROMPT
+                        "quiz"            -> CheckInStage.QUIZ
+                        "complete"        -> CheckInStage.COMPLETE
+                        else              -> CheckInStage.CHECKIN
                     }
                     _state.update {
                         it.copy(
-                            isBotTyping = false,
+                            isBotTyping  = false,
                             checkInStage = newStage,
-                            summary = response.summary
+                            summary      = response.summary
                         )
                     }
                     addBotMessage(response.message)
 
-                    // After complete, switch back to QA mode
                     if (newStage == CheckInStage.COMPLETE) {
                         _state.update { it.copy(mode = ChatMode.QA) }
-                        addBotMessage(
-                            "✅ Session logged! You can keep asking me study questions."
-                        )
+                        addBotMessage("✅ Session logged! Tap Q&A to ask me anything.")
                     }
                 }
                 is ApiResult.Error -> {
                     _state.update { it.copy(isBotTyping = false) }
                     if (result.message == "SESSION_EXPIRED") {
-                        addBotMessage("Session timed out. Tap **Check In** to start again.")
-                        _state.update {
-                            it.copy(mode = ChatMode.QA, checkInStage = CheckInStage.IDLE)
-                        }
+                        addBotMessage("Session timed out. Tap **Check In** to start a new one.")
+                        _state.update { it.copy(checkInStage = CheckInStage.IDLE, sessionUserId = "") }
                     } else {
                         addBotMessage("⚠️ ${result.message}")
                     }
@@ -197,63 +244,71 @@ class CheckInViewModel @Inject constructor(
         }
     }
 
-    // ── Check-in button tapped ────────────────────────────────────────────────
-    fun startCheckIn() {
-        if (_state.value.mode == ChatMode.CHECKIN) return
-        pingThenStartCheckIn()
+    // ── Mode switching ────────────────────────────────────────────────────────
+
+    fun switchToQA() {
+        if (_state.value.mode == ChatMode.QA) return
+        _state.update { it.copy(mode = ChatMode.QA) }
+        addBotMessage("Switched to Q&A mode 💬 Ask me anything about ${_state.value.subjectName.ifEmpty { "your subject" }}.")
     }
 
-    private fun pingThenStartCheckIn() {
+    // Called from QA mode to start a fresh check-in
+    fun startCheckIn() {
+        if (_state.value.mode == ChatMode.CHECKIN) return
+        _state.update {
+            it.copy(
+                mode          = ChatMode.CHECKIN,
+                checkInStage  = CheckInStage.IDLE,
+                sessionUserId = "",
+                summary       = null
+            )
+        }
+        retryCheckIn()
+    }
+
+    // Called when check-in errored and user wants to retry
+    fun retryCheckIn() {
         viewModelScope.launch {
-            _state.update { it.copy(mode = ChatMode.CHECKIN, checkInStage = CheckInStage.PINGING) }
+            _state.update { it.copy(checkInStage = CheckInStage.PINGING) }
             addBotMessage("Connecting to Planora... ⏳")
 
             when (checkInRepository.ping()) {
-                is ApiResult.Success -> beginCheckIn()
-                is ApiResult.Error -> {
-                    _state.update {
-                        it.copy(mode = ChatMode.QA, checkInStage = CheckInStage.IDLE)
+                is ApiResult.Success -> {
+                    val userId = UUID.randomUUID().toString()
+                    _state.update { it.copy(isBotTyping = true) }
+
+                    when (val result = checkInRepository.startCheckIn(
+                        userId = userId,
+                        subjectName = _state.value.subjectName.ifEmpty { "Today's Subject" }
+                    )) {
+                        is ApiResult.Success -> {
+                            _state.update {
+                                it.copy(
+                                    sessionUserId = userId,
+                                    checkInStage  = CheckInStage.CHECKIN,
+                                    isBotTyping   = false
+                                )
+                            }
+                            addBotMessage(result.data.message)
+                        }
+                        is ApiResult.Error -> {
+                            _state.update {
+                                it.copy(checkInStage = CheckInStage.ERROR, isBotTyping = false)
+                            }
+                            addBotMessage("⚠️ ${result.message}")
+                        }
+                        else -> Unit
                     }
-                    addBotMessage("⚠️ Couldn't reach the server. Check your connection and try again.")
+                }
+                is ApiResult.Error -> {
+                    _state.update { it.copy(checkInStage = CheckInStage.ERROR) }
+                    addBotMessage("⚠️ Couldn't reach the server. Check your connection.")
                 }
                 else -> Unit
             }
         }
     }
 
-    private suspend fun beginCheckIn() {
-        val userId = UUID.randomUUID().toString()
-        _state.update { it.copy(isBotTyping = true) }
-
-        when (val result = checkInRepository.startCheckIn(
-            userId = userId,
-            subjectName = _state.value.subjectName.ifEmpty { "Today's Subject" }
-        )) {
-            is ApiResult.Success -> {
-                _state.update {
-                    it.copy(
-                        sessionUserId = userId,
-                        checkInStage = CheckInStage.CHECKIN,
-                        isBotTyping = false
-                    )
-                }
-                addBotMessage(result.data.message)
-            }
-            is ApiResult.Error -> {
-                _state.update {
-                    it.copy(
-                        mode = ChatMode.QA,
-                        checkInStage = CheckInStage.IDLE,
-                        isBotTyping = false
-                    )
-                }
-                addBotMessage("⚠️ ${result.message}")
-            }
-            else -> Unit
-        }
-    }
-
-    // ── Dismiss — clean up check-in session if open ───────────────────────────
     fun onDismiss() {
         val userId = _state.value.sessionUserId
         if (userId.isNotEmpty() && _state.value.mode == ChatMode.CHECKIN) {
@@ -263,7 +318,6 @@ class CheckInViewModel @Inject constructor(
 
     fun reset() { _state.value = CheckInUiState() }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
     private fun addBotMessage(text: String) {
         _state.update {
             it.copy(messages = it.messages + ChatMessage(text = text, isUser = false))

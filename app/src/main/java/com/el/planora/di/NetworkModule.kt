@@ -1,7 +1,7 @@
 package com.el.planora.di
 
 import kotlin.jvm.java
-import com.el.planora.data.remote.PlonoraApiService
+import com.el.planora.data.remote.planoraApiService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -47,6 +47,6 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun providePlonoraApiService(retrofit: Retrofit): PlonoraApiService =
-        retrofit.create(PlonoraApiService::class.java)
+    fun provideplanoraApiService(retrofit: Retrofit): planoraApiService =
+        retrofit.create(planoraApiService::class.java)
 }
